@@ -16,6 +16,7 @@ class DataTransformationConfig:
 
 
 class DataTransformation:
+
     def __init__(self):
         self.data_transformation_config = DataTransformationConfig()
 
@@ -65,6 +66,7 @@ class DataTransformation:
 
             input_feature_test_df = test_df.drop(columns =[target_column_name], axis=1)
             target_feature_test_df = test_df[target_column_name]
+            
             input_feature_train_arr = preprocessor_obj.fit_transform(input_feature_train_df)
             input_feature_test_arr = preprocessor_obj.transform(input_feature_test_df)
 
@@ -85,4 +87,4 @@ class DataTransformation:
         except Exception as e:
             print('Error in data transformation')
             raise e
-        
+
