@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from src.components.data_transformation import DataTransformation
 from src.components.model_trainer import ModelTrainer
 from src.logger import logging
+
+log = logging.getLogger('ingestion')
 @dataclass
 class DataIngestionConfig:
     raw_data_path: str = os.path.join('artifacts', 'raw_data.csv')
@@ -44,11 +46,13 @@ if __name__ == '__main__':
     obj = DataIngestion()
     train_data, test_data = obj.initiate_data_ingestion()
     
+    target_column_name = 'writing score'
     data_transformation = DataTransformation()
-    train_arr, test_arr, _ = data_transformation.initiate_data_transformation(train_data, test_data)
+    train_arr, test_arr, _ = data_transformation.initiate_data_transformation(train_data, test_data,target_column_name)
 
     model_trainer = ModelTrainer()
-    model_trainer.initiate_model_trainer(train_arr, test_arr)
+    best_model_name , model_score = model_trainer.initiate_model_trainer(train_arr, test_arr)
+    log.info(f'BEST MODEL NAME : {best_model_name} ,  MODEL SCORE : {model_score}')
 
 
     

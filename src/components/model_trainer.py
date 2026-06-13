@@ -17,6 +17,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from catboost import CatBoostRegressor
 from src.components.utils import save_object
 from src.logger import logging
+from sklearn.model_selection import GridSearchCV
 
 log  = logging.getLogger('file1')
 
@@ -48,34 +49,81 @@ class ModelTrainer:
                 'XGBRegressor': XGBRegressor()
             }
 
-            model_report = {}
+            params = {
+                'Random Forest' : {
+                    'n_estimators':[10,20,30],
+                    'max_depth' : [3,4,5]
 
+                },
+                'Gradient Boosting' :{
+                    'n_estimators': [10,20,30],
+                    'max_depth' : [3,4,5],
+                    'learning_rate':[0.01,0.1,1.0]
+                },
+                'AdaBoost Regressor' : {
+                    'n_estimators':[10,20,30],
+                    'learning_rate':[0.01,0.1,1.0]
+                },
+                'Linear Regression' :{},
+                'Decision Tree': {
+                    'max_depth':[3,4,5],
+                    'min_samples_split':[2,3,4]
+                },
+                'KNN Regressor':{
+                    'n_neighbors':[3,5,7,9]
+                },
+                'CatBoost Regressor' :{
+                    'iterations': [3,5,10],
+                    'learning_rate':[0.01,0.1,1.0],
+                    'depth':[3,5,10]
+                },
+                'XGBRegressor':{
+                    'n_estimators':[10,20,30],
+                    'learning_rate':[0.01,0.1,1.0],
+                    'max_depth':[3,4,5]
+                }
+
+            }
+            model_report = {}
+            best_estimators = {}
             for model_name, model in models.items():
                
-                model.fit(X_train, y_train)
+               gs = GridSearchCV(
+                   estimator=model,
+                   param_grid=params[model_name],
+                   cv=3,
+                   n_jobs=1,
+                   scoring='r2'
+               )
+               gs.fit(X_train, y_train)
+               best_estimators[model_name] = gs.best_estimator_
+               model_report[model_name] = gs.best_score_
+               log.debug(f'ESTIMATOR: {model_name} , and its CV R2 SCRORE: {gs.best_score_}')
+               
 
-                y_train_pred = model.predict(X_train)
-                y_test_pred = model.predict(X_test)
+            
+            best_model_name= max(model_report, key=model_report.get)
+            best_model = best_estimators[best_model_name]
+            
+            y_train_pred = best_model.predict(X_train)
+            y_test_pred = best_model.predict(X_test)
 
-                train_model_score = r2_score(y_train, y_train_pred)
-                test_model_score = r2_score(y_test, y_test_pred)
+            train_r2_score = r2_score(y_train,y_train_pred)
+            test_r2_score = r2_score(y_test,y_test_pred)
 
-                model_report[model_name] = test_model_score
+            log.debug(f'FINAL BEST MODEL: {best_model_name}')
+            log.debug(f'FINAL TEST R2 SCORE : {test_r2_score}')
+            log.debug(f'FINAL TRAIN R2 SCORE : {train_r2_score}')
 
-            best_model_score = max(model_report.values())
 
-            best_model_name = max(model_report , key=model_report.get)
-            best_model = model_report[best_model_name]
-
-            log.debug('Best model found on both training and testing dataset')
-            log.debug('Model Report ')
-            log.debug(model_report)
 
             save_object(
                 file_path=self.model_trainer_config.trained_model_file_path,
                 obj=best_model
             )
 
+            return best_model_name , test_r2_score, 
+        
         except Exception as e:
             log.error('Error in model training')
             raise e
