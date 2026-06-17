@@ -1,13 +1,20 @@
 import streamlit as st
 import pandas as pd
-from src.utils import load_object
+import requests
+import subprocess
+import time
 
+# Starting FAST API server
+def start_fastapi():
+    try:
+        requests.get("http://127.0.0.1:8000", timeout=2)
+    except requests.exceptions.ConnectionError:
+        subprocess.Popen(["uvicorn", "app:app", "--reload"])
+        time.sleep(3)
+
+start_fastapi()
 st.set_page_config(page_title="Student Performance Prediction")
-
 st.title("Student Performance Input Form")
-
-model  = load_object('artifacts/model.pkl')
-preprocess  = load_object('artifacts/preprocessor.pkl')
 
 # Gender
 gender = st.selectbox(
@@ -70,20 +77,22 @@ reading_score = st.number_input(
 # Submit Button
 if st.button("Submit"):
 
-    input_data = pd.DataFrame({
-        "gender": [gender],
-        "race/ethnicity": [race_ethnicity],
-        "parental level of education": [parental_level_of_education],
-        "lunch": [lunch],
-        "test preparation course": [test_preparation_course],
-        "math score": [math_score],
-        "reading score": [reading_score]
-    })
+    input_data = {
+       "gender": gender,
+        "race_ethnicity": race_ethnicity,
+        "parental_level_of_education": parental_level_of_education,
+        "lunch": lunch,
+        "test_preparation_course": test_preparation_course,
+        "math_score": math_score,
+        "reading_score": reading_score
+    }
 
-    X_transformed = preprocess.transform(input_data)
+    response = requests.post("http://127.0.0.1:8000/predict", json=input_data)
 
-    prediction = model.predict(X_transformed)
+    if response.status_code == 200:
+        prediction = response.json()["prediction"]
+        st.success(f"Predicted Writing Score: {prediction:.2f}")
+    else:
+        st.error("Prediction failed")
 
-    st.write("Prediction:", prediction[0])
-    
     
